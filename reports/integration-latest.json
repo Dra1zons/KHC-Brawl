@@ -1,0 +1,87 @@
+{
+  "updated_at": "2026-11-12T15:32:14.553Z",
+  "kind": "integration-status",
+  "run": {
+    "number": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/Dra1zons/KHC-Brawl/actions/runs/43245518451",
+    "commit": "5248c75b86fcd5f502e72319ac8baac9086e2ce2"
+  },
+  "jobs": [
+    {
+      "name": "integration",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-java@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Unit tests for lifecycle patching",
+          "conclusion": "success"
+        },
+        {
+          "name": "Select base APK if provided",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install required Android tools",
+          "conclusion": "success"
+        },
+        {
+          "name": "Download pinned apktool 2.11.1",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile in-process menu into DEX",
+          "conclusion": "success"
+        },
+        {
+          "name": "Smoke-test decode, hook, merge, rebuild and signing on our own fixture",
+          "conclusion": "success"
+        },
+        {
+          "name": "Download the selected full game APK",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Integrate into the selected game Activity",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Prepare the integrated APK artifact",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Upload integrated GAME APK, not a standalone menu",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/setup-java@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "artifacts": [],
+  "game_apk_built": false
+}
