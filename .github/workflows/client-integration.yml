@@ -1,0 +1,109 @@
+name: In-client integration checks and APK
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'integration/**'
+      - '.github/workflows/client-integration.yml'
+  workflow_dispatch:
+    inputs:
+      base_apk_url:
+        description: 'Public HTTPS URL to the full APK, or a Yandex Disk file link'
+        required: false
+        type: string
+      base_apk_sha256:
+        description: 'Expected full APK SHA256 (recommended)'
+        required: false
+        type: string
+      game_activity:
+        description: 'Game Activity class, not the downloader/launcher'
+        required: false
+        default: 'com.supercell.brawlstars.GameApp'
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: client-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Unit tests for lifecycle patching
+        run: python3 integration/test_patch.py
+      - name: Select base APK if provided
+        id: source
+        env:
+          INPUT_URL: ${{ inputs.base_apk_url }}
+          INPUT_SHA: ${{ inputs.base_apk_sha256 }}
+          INPUT_ACTIVITY: ${{ inputs.game_activity }}
+        run: |
+          python3 - <<'PY'
+          import json,os,sys
+          from pathlib import Path
+          sys.path.insert(0,'integration')
+          from download_base import secure_url
+          from patch_lifecycle import descriptor
+          config=json.loads(Path('integration/source.json').read_text())
+          if os.environ.get('INPUT_URL'):
+              config={'url':os.environ['INPUT_URL'],'sha256':os.environ.get('INPUT_SHA',''),'game_activity':os.environ.get('INPUT_ACTIVITY') or 'com.supercell.brawlstars.GameApp'}
+          ready=bool(config.get('url'))
+          if ready:
+              secure_url(config['url']);descriptor(config['game_activity'])
+          Path('integration-build').mkdir(exist_ok=True)
+          Path('integration-build/selected-source.json').write_text(json.dumps(config))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('ready='+str(ready).lower()+'\n')
+          if not ready:
+              print('No full game APK supplied. Only integration tests will run; no game APK can be built.')
+              with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('## No game APK built\nFull base APK URL is missing. This run tests the patching pipeline using our own fixture, not Brawl Stars.\n')
+          PY
+      - name: Install required Android tools
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          python3 integration/ci_run.py "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+      - name: Download pinned apktool 2.11.1
+        run: |
+          python3 - <<'PY'
+          import urllib.request,hashlib
+          from pathlib import Path
+          dest=Path('integration-build/apktool.jar')
+          with urllib.request.urlopen('https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar',timeout=120) as response:dest.write_bytes(response.read())
+          assert dest.stat().st_size==24562875,'Unexpected apktool release size'
+          print('apktool SHA256:',hashlib.sha256(dest.read_bytes()).hexdigest())
+          PY
+      - name: Compile in-process menu into DEX
+        run: python3 integration/ci_run.py bash integration/compile_helper.sh
+      - name: Smoke-test decode, hook, merge, rebuild and signing on our own fixture
+        run: python3 integration/ci_run.py bash integration/build_fixture.sh
+      - name: Download the selected full game APK
+        if: steps.source.outputs.ready == 'true'
+        run: python3 integration/ci_run.py python3 integration/download_base.py integration-build/selected-source.json integration-build/base.apk
+      - name: Integrate into the selected game Activity
+        if: steps.source.outputs.ready == 'true'
+        run: |
+          ACTIVITY="$(python3 -c 'import json; print(json.load(open("integration-build/selected-source.json"))["game_activity"])')"
+          python3 integration/ci_run.py bash integration/integrate.sh integration-build/base.apk "$ACTIVITY" integration-build/game
+      - name: Prepare the integrated APK artifact
+        if: steps.source.outputs.ready == 'true'
+        run: |
+          mkdir -p integrated-dist
+          cp integration-build/game/KHC-integrated-test.apk integration-build/game/SHA256SUMS.txt integration-build/game/integration-report.json integration-build/base.source-info.json integrated-dist/
+          echo '## Integrated APK built (installation/runtime not tested)' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload integrated GAME APK, not a standalone menu
+        if: steps.source.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KHC-integrated-game-test-${{ github.run_number }}
+          path: integrated-dist/
+          if-no-files-found: error
+          retention-days: 3

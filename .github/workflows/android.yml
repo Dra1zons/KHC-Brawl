@@ -1,8 +1,5 @@
-name: Android prototype APK
+name: Legacy standalone prototype (not game)
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
