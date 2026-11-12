@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22)
+project(khc_android LANGUAGES CXX)
+set(MODCORE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../../../native-core" "${CMAKE_CURRENT_BINARY_DIR}/modcore")
+add_library(khc_core SHARED bridge.cpp)
+target_link_libraries(khc_core PRIVATE modcore)
+target_link_options(khc_core PRIVATE "-Wl,-z,max-page-size=16384")

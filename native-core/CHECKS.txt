@@ -1,0 +1,5 @@
+PASS: 154 unit checks under g++ C++17 with -Wall -Wextra -Werror -pedantic.
+PASS: CLI init, validate, plan; plan returns NO_GAME_BRIDGE for every action.
+NOT RUN: Android/NDK compilation and gameplay; SDK/NDK absent.
+NOT RUN: CMake build; CMake absent.
+BLOCKED: UBSan runtime/static library absent; sanitizer verification unavailable.
